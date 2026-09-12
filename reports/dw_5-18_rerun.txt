@@ -1,0 +1,199 @@
+﻿
+======================================================================
+≡ƒôé STEP 1: LOAD EXISTING RECORDING
+======================================================================
+
+   File: D:\Neurosense AI\audio\DW 5-18-26 3.28PM - 010.mp3
+   Subject: dw
+   Duration: 852.34 seconds
+   Sample Rate: 8000 Hz
+
+======================================================================
+≡ƒôè STEP 2: FEATURE EXTRACTION
+======================================================================
+
+≡ƒö¼ Analyzing audio patterns...
+
+Γ£à Feature Extraction Complete
+
+1∩╕ÅΓâú Energy Analysis:
+   RMS Energy: 0.0275
+   Peak Amplitude: 0.4597
+   Dynamic Range: 16.71x
+
+2∩╕ÅΓâú Frequency Analysis:
+   Dominant Frequency: 151.7 Hz
+   Frequency Std Dev: 233.8 Hz
+   High Freq Ratio: 94.16%
+
+3∩╕ÅΓâú Temporal Analysis (Voice Activity):
+   Speech/Voice Ratio: 44.9%
+   Energy Variance: 0.045168
+
+4∩╕ÅΓâú Pitch & Stress Indicators:
+   Pitch Variation: 0.329
+   Speaking Rate: 4.31 syllables/sec
+   Jitter: 1.0390
+   Spectral Flux: 12.86
+
+5∩╕ÅΓâú Assessment:
+   Behavioral Score: 52/100
+   Stress Level: 90/100
+   Status: Fair
+
+======================================================================
+≡ƒñû STEP 3: CLAUDE AI INTERPRETATION
+======================================================================
+
+Γ£à Claude AI connection initialized
+
+≡ƒñû Sending data to Claude AI...
+≡ƒôè Analyzing behavioral patterns...
+Γ£à Analysis complete!
+≡ƒöî Claude AI connection closed
+
+======================================================================
+≡ƒñû CLAUDE AI BEHAVIORAL ANALYSIS
+======================================================================
+
+# NeuroSense AI Platform ΓÇö Behavioral Data Analysis
+
+## Important Preliminary Note
+
+Before providing analysis, I want to be transparent about something significant: **I'm a general-purpose language model, not a validated clinical diagnostic system.** The interpretation below applies general signal-processing knowledge to these metrics, but it has not been validated against clinical outcomes, species-specific norms, or diagnostic standards. It should be treated as **exploratory pattern description, not clinical assessment.**
+
+---
+
+## 1. OVERALL BEHAVIORAL STATUS
+
+The subject demonstrates moderate behavioral activity (52/100) with relatively low energy output, moderate vocal engagement, and reasonably stable vocal patterning ΓÇö a profile consistent with a calm-to-mildly-active state, though the moderate score warrants contextual verification against baseline data.
+
+---
+
+## 2. KEY BEHAVIORAL INDICATORS
+
+### Energy Level (RMS: 0.0275)
+- This is a **low-to-moderate RMS amplitude**, suggesting the subject is not in a high-exertion or high-arousal state
+- Consistent with resting, quiet vocalization, or passive engagement
+- **Limitation:** Without a baseline RMS for this specific subject, "low" is relative ΓÇö this could represent suppressed activity in a normally high-energy subject, or normal output for a calm one
+
+### Frequency Pattern (Dominant: 151.7 Hz)
+- 151.7 Hz falls within a **mid-range vocal fundamental frequency**
+- In human speech, this is roughly consistent with a lower male voice or mid-range female voice during calm speech
+- In rodent TBI research models, frequency scales differ substantially ΓÇö this would require species-specific calibration to interpret
+- Peak activity at 0.4597 suggests **transient bursts** rather than sustained high-frequency output
+- No obvious indicators of hyperkinetic or seizure-like high-frequency patterns from this metric alone
+
+### Vocal Stability Index (0.753)
+- On a 0ΓÇô1 scale, **0.753 represents moderate-to-good stability**
+- This suggests relatively consistent vocal patterning without major irregularities
+- Values approaching 1.0 would indicate high regularity; values below ~0.5 might suggest fragmentation, distress vocalizations, or neurological disruption
+- This is a **modestly positive indicator**
+
+### Vocal Activity Ratio (44.9%)
+- The subject was vocally active approximately **45% of the monitored period**
+- This is moderate engagement ΓÇö neither silent/withdrawn nor continuously vocalizing
+- Sustained silence or near-zero ratios can indicate depressed neurological or behavioral states
+
+---
+
+## 3. CLINICAL INTERPRETATION
+
+### If This Were a TBI Research Subject (Animal Model)
+- The **moderate overall score and low-energy profile** could be consistent with mild post-injury behavioral depression, which is commonly observed in rodent TBI models during recovery phases
+- The **vocal stability at 0.753** would be a relatively encouraging sign ΓÇö severe TBI subjects often show fragmented, irregular vocalization patterns
+- **No single metric here is acutely alarming**, but the 52/100 composite score suggests the subject is not fully at peak behavioral expression
+
+### Concerning Indicators
+- **Composite score of 52/100** ΓÇö if the platform's normative range for healthy subjects is 70ΓÇô90, this represents meaningful deviation
+- **Low RMS (0.0275)** could indicate hypoactivity, which in TBI models may reflect fatigue, pain, or neurological suppression
+- **Without longitudinal trend data**, it is impossible to determine whether this represents improvement, decline, or stable baseline
+
+### Positive Indicators
+- Vocal stability index is in a moderate-to-healthy range
+- Vocal activity ratio shows the subject is engaged, not withdrawn
+- No extreme frequency anomalies apparent from the dominant frequency alone
+
+---
+
+## 4. PATTERN ASSESSMENT
+
+| Dimension | Assessment | Confidence |
+|---|---|---|
+| Consistent with healthy baseline? | **Uncertain** ΓÇö moderate score, needs baseline comparison | Low-Medium |
+| Stress indicators present? | **Mild/possible** ΓÇö low energy could reflect stress or simply rest | Low |
+| Activity level appropriate? | **Below peak, within plausible range** | Medium |
+| Neurological red flags? | **Not apparent from these metrics alone** | Medium |
+
+The pattern is **not clearly pathological** but is also **not clearly within a healthy high-function range.** The moderate composite score is the primary flag.
+
+---
+
+## 5. MONITORING RECOMMENDATIONS
+
+### Monitoring Frequency
+- **Maintain current frequency** unless trending data shows decline
+- If this score represents a drop from prior sessions, **increase monitoring interval**
+
+### Metrics to Watch
+1. **Longitudinal composite score trend** ΓÇö single-point scores are far less meaningful than trajectory
+2. **Vocal Activity Ratio over time** ΓÇö declining ratio may indicate behavioral withdrawal
+3. **RMS trend** ΓÇö sustained low energy warrants attention
+4. **Vocal Stability Index** ΓÇö watch for drops below 0.6, which may indicate increased irregularity
+
+### Immediate Actions
+- **No immediate emergency intervention indicated** from these metrics
+- **Cross-reference with observational behavioral data** (locomotion, feeding, grooming in animal models; functional assessments in clinical contexts)
+- **Establish or retrieve subject baseline** ΓÇö this is the single most important step for meaningful interpretation
+
+---
+
+## 6. CONFIDENCE LEVEL
+
+**Overall Confidence: LOW-MEDIUM**
+
+### Why Not Higher:
+- No subject-specific baseline provided
+- No longitudinal trend data
+- The platform's normative ranges and score construction methodology are not documented in this request
+- I am not a validated clinical AI system for this application
+- Species context matters significantly ΓÇö interpreting these metrics for animal vs. human subjects requires fundamentally different reference frames
+
+### What Would Improve Confidence Significantly:
+1. **Subject baseline data** (3ΓÇô5 prior sessions minimum)
+2. **Population normative ranges** for this platform
+3. **Concurrent behavioral observation scores**
+4. **Platform validation documentation** (how was the 52/100 composite derived?)
+5. **Species and subject metadata**
+6. **Session context** (time post-injury, treatment condition, time of day)
+
+---
+
+## Final Note on AI-Assisted Clinical Tools
+
+This analysis demonstrates how language models can structure and contextualize quantitative data, but I want to be clear: **clinical decisions in TBI research should be made by qualified researchers and veterinarians using validated instruments.** If the NeuroSense platform is being used in actual research contexts, its outputs should be interpreted by trained personnel with access to full subject history, not delegated to a general AI assistant. I'm happy to help reason through data, explain signal-processing concepts, or discuss TBI research methodology ΓÇö but the interpretive authority here appropriately belongs to your research team.
+
+======================================================================
+≡ƒôï SUMMARY
+======================================================================
+   Status: Needs Attention
+   Confidence: High
+   Source: D:\Neurosense AI\audio\DW 5-18-26 3.28PM - 010.mp3
+   Subject: dw
+
+============================================================
+≡ƒôê TREND vs 7-DAY AVERAGE  subject: dw
+============================================================
+   Baseline sessions: 8
+
+   Behavioral Score: 52  (avg 61.8, -9.8)
+      ΓåÆ below average
+
+   Stress Level: 90  (avg 78.8, +11.2)
+      ΓåÆ above average
+
+   Speech Ratio: 44.9%  (avg 39.4%, +5.5%)
+      ΓåÆ above average (positive)
+
+≡ƒÆ╛ Saved session #26: dw recording #9
+[OK] Alert sent to 5 recipient(s)

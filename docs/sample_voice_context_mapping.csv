@@ -1,0 +1,7 @@
+participant_id,session_id,audio_file_id,recording_start_utc_utc,diagnosis_category_study,assessment_instrument,assessment_date,assessment_score,score_interpretation_notes,time_aligned_event_label,event_datetime_utc,voice_analysis_window_notes
+P-DEMO-001,S-2026-0414-001,AO_4-14-26_008,2026-04-14T19:41:00Z,Study arm A / baseline cluster,PCL-5 total,2026-04-10,42,Example only — not a real patient score,Self-report "difficult week",2026-04-12T12:00:00Z,Compare first 10 min vs last 10 min of interview if needed
+P-DEMO-001,S-2026-0414-001,AO_4-14-26_008,2026-04-14T19:41:00Z,Study arm A / baseline cluster,ISI (sleep),2026-04-10,14,Example only,None,,
+P-DEMO-001,S-2026-0414-001,AO_4-14-26_008,2026-04-14T19:41:00Z,Study arm A / baseline cluster,PHQ-9,2026-04-10,11,Example only,Medication review (documented),2026-04-08T15:30:00Z,Optional anchor for pre/post comparisons
+P-DEMO-002,S-2026-0415-002,INT_0415_003,2026-04-15T16:05:00Z,Study arm B,PCL-5 total,2026-04-14,38,Example only,First therapy session (protocol),2026-04-16T14:00:00Z,Post-event follow-up interview in same batch
+P-DEMO-002,S-2026-0415-002,INT_0415_003,2026-04-15T16:05:00Z,Study arm B,GAD-7,2026-04-14,9,Example only,ANS wearable upload (parallel modality),2026-04-15T08:00:00Z,Join on session date ± agreed tolerance
+P-DEMO-003,S-2026-0416-004,INT_0416_001,2026-04-16T21:22:00Z,Screen-in / pending final dx,Custom site screener,2026-04-16,3 (site scale),Example only — define scale in data dictionary,In-home EEG segment labeled "night 1",2026-04-16T04:00:00Z,Align voice day vs EEG night per protocol

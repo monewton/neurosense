@@ -1,0 +1,15 @@
+source_system,source_export_or_table,source_column,example_source_value,neurosense_internal_key,data_type,required_for_join,join_rule_or_notes
+REDCap,Participant roster,record_id,P-DEMO-001,participant_id,string,yes,Exact match after de-identification mapping
+REDCap,Participant roster,redcap_event_name,visit_1_arm_1,study_event_code,string,optional,Map event arm to session_id convention if multi-arm
+REDCap,Voice log (custom instrument),audio_filename,AO_4-14-26_008.mp3,audio_file_id,string,yes,Strip path; match stem to analysis input basename
+REDCap,Voice log (custom instrument),interview_start_datetime,2026-04-14 14:41,recording_start_local,datetime,yes,Convert to UTC with site timezone; store as recording_start_utc_utc
+Athena / site EDC,Assessments export,subject_key,SUBJ-10042,participant_id,string,yes,Crosswalk table: site_subject_key → participant_id
+Athena / site EDC,Assessments export,pcl5_total,42,assessment_score_pcl5,number,optional,One column per instrument or long-format pivot
+Athena / site EDC,Assessments export,assessment_date,2026-04-10,assessment_date,date,yes,ISO-8601 date preferred
+Wearable cloud export,ANS_session,participant_code,P-DEMO-001,participant_id,string,yes,Same keyspace as roster
+Wearable cloud export,ANS_session,session_start_ts,2026-04-14T08:00:00Z,modality_session_start_utc,datetime,yes,Join voice recording to nearest session within protocol window (e.g. ±24h)
+Wearable cloud export,ANS_session,device_serial,HRV-77812,device_id,string,no,Provenance only; not used in primary join
+Internal NeuroSense,Derived features,audio_file_id,AO_4-14-26_008,audio_file_id,string,yes,Must match ingest key used by analyzer output JSON/CSV
+Internal NeuroSense,Derived features,session_id,S-2026-0414-001,session_id,string,yes,Propagated from mapping step for multi-file sessions
+Case notes (de-identified),Events,event_type,therapy_session_1,time_aligned_event_label,string,optional,Controlled vocabulary recommended
+Case notes (de-identified),Events,event_dt,2026-04-16T14:00:00Z,event_datetime_utc,datetime,optional,Used for before/after windows relative to voice session

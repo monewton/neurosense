@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Secrets / local config
+.env
+.env.*
+!.env.example
+alert_emails.json
+
+# IDE / OS
+.idea/
+.vscode/
+.qodo/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# NeuroSense local data & media (keep repo lean)
+data/
+recordings/
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+
+# Analysis outputs
+*.png
+!docs/**/*.png
+
+# Logs / caches
+*.log
+.cache/
+.pytest_cache/
+.mypy_cache/

@@ -1,0 +1,13 @@
+# Core audio + analysis
+numpy
+scipy
+matplotlib
+soundfile
+sounddevice
+
+# Claude integration + alerts
+python-dotenv
+aiohttp
+
+# Compressed audio formats (MP3, M4A, etc.) — also requires ffmpeg on PATH
+librosa
