@@ -52,8 +52,10 @@ Optional: `simple_recorder.py` — record a new mic clip first.
 
 ```powershell
 cd C:\neurosense-dev
-.\venv\Scripts\python.exe audio_analyzer.py recordings\008-Patient.wav --subject 0008
+.\venv\Scripts\python.exe audio_analyzer.py recordings\008-Patient.wav --subject 0008 --patient-only
 ```
+
+`008-Patient.wav` is patient-only (interviewer off-mic). `--patient-only` collapses silences longer than 2s so pause/rate/sadness scores reflect the speaker’s turns, not turn-taking gaps. Omit the flag for clips where long pauses are actually the speaker.
 
 You get:
 
@@ -66,7 +68,7 @@ You get:
 ### Step B — Full Claude assessment
 
 ```powershell
-.\venv\Scripts\python.exe claude_demo.py --file recordings\008-Patient.wav --subject 0008
+.\venv\Scripts\python.exe claude_demo.py --file recordings\008-Patient.wav --subject 0008 --patient-only
 ```
 
 Needs a **valid** `CLAUDE_API_KEY` in `.env`. A `401 authentication_error` means the key is invalid/revoked — replace it at [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys).
@@ -129,6 +131,7 @@ Needs a **valid** `CLAUDE_API_KEY` in `.env`. A `401 authentication_error` means
 | `No module named 'matplotlib'` | Same — you’re on system Python, not the venv |
 | Chaining `Activate.ps1` and `python` on one line | Run them as **two separate** commands |
 | Claude `401` / API key invalid | Key is loaded from `.env` but Anthropic rejects it — create a new key |
+| Long pauses / high pause ratio / “sad” on an interview clip | Interviewer was likely off-mic — re-run with `--patient-only` |
 | Can’t load MP3/M4A | Install ffmpeg on PATH; ensure `librosa` is in the venv |
 
 ---
@@ -137,7 +140,7 @@ Needs a **valid** `CLAUDE_API_KEY` in `.env`. A `401 authentication_error` means
 
 ```powershell
 cd C:\neurosense-dev
-.\venv\Scripts\python.exe audio_analyzer.py recordings\008-Patient.wav --subject 0008
-.\venv\Scripts\python.exe claude_demo.py --file recordings\008-Patient.wav --subject 0008
+.\venv\Scripts\python.exe audio_analyzer.py recordings\008-Patient.wav --subject 0008 --patient-only
+.\venv\Scripts\python.exe claude_demo.py --file recordings\008-Patient.wav --subject 0008 --patient-only
 .\venv\Scripts\python.exe session_history.py --subject 0008
 ```

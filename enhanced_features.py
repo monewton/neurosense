@@ -696,6 +696,13 @@ class EnhancedFeatureExtractor:
         return max(0, min(100, score))
 
 
+# Silences longer than this are treated as off-mic interviewer turns, not
+# patient pauses, when --patient-only is set.
+DEFAULT_OFFMIC_PAUSE_SEC = 2.0
+_OFFMIC_KEEP_PAUSE_SEC = 0.30
+_OFFMIC_MIN_KEEP_SEC = 0.40
+
+
 def compute_voice_activity(
     audio_data: np.ndarray,
     sample_rate: int,
@@ -720,6 +727,164 @@ def compute_voice_activity(
     threshold = float(np.mean(frame_energies_arr) * 0.5) if len(frame_energies_arr) else 0.0
     speech_frames = frame_energies_arr > threshold
     return frame_energies_arr, threshold, speech_frames
+
+
+def collapse_long_pauses(
+    audio_data: np.ndarray,
+    sample_rate: int,
+    *,
+    max_pause_sec: float = DEFAULT_OFFMIC_PAUSE_SEC,
+    keep_pause_sec: float = _OFFMIC_KEEP_PAUSE_SEC,
+) -> tuple[np.ndarray, dict]:
+    """
+    Collapse silences longer than max_pause_sec down to keep_pause_sec.
+
+    For patient-only interview recordings the interviewer is off-mic, so those
+    long gaps are turn-taking, not withdrawn/sad patient pauses. Scoring the
+    collapsed clip keeps pause ratio, speaking rate, RMS, and sadness inference
+    on the speaker's actual turns.
+    """
+    audio = np.asarray(audio_data, dtype=float).reshape(-1)
+    n = len(audio)
+    orig_dur = (n / sample_rate) if sample_rate else 0.0
+    stats = {
+        "n_gaps_collapsed": 0,
+        "removed_sec": 0.0,
+        "max_pause_before_sec": 0.0,
+        "original_duration_sec": orig_dur,
+        "collapsed_duration_sec": orig_dur,
+        "max_pause_sec_used": float(max_pause_sec),
+    }
+    if n == 0 or sample_rate <= 0:
+        return audio, stats
+
+    hop_ms = 10.0
+    _energies, _threshold, speech_frames = compute_voice_activity(
+        audio, sample_rate, hop_ms=hop_ms
+    )
+    hop = max(1, int(hop_ms * sample_rate / 1000))
+    nf = len(speech_frames)
+    if nf == 0:
+        return audio, stats
+
+    max_pause_frames = max(1, int(round(max_pause_sec / (hop_ms / 1000.0))))
+    keep_pause_frames = max(1, int(round(keep_pause_sec / (hop_ms / 1000.0))))
+
+    keep = np.ones(nf, dtype=bool)
+    n_collapsed = 0
+    max_pause_frames_seen = 0
+    i = 0
+    while i < nf:
+        if speech_frames[i]:
+            i += 1
+            continue
+        j = i
+        while j < nf and not speech_frames[j]:
+            j += 1
+        run = j - i
+        if run > max_pause_frames_seen:
+            max_pause_frames_seen = run
+        if run > max_pause_frames:
+            keep[i + keep_pause_frames : j] = False
+            n_collapsed += 1
+        i = j
+
+    hop_sec = hop_ms / 1000.0
+    stats["max_pause_before_sec"] = float(max_pause_frames_seen * hop_sec)
+    stats["n_gaps_collapsed"] = int(n_collapsed)
+    if n_collapsed == 0:
+        return audio, stats
+
+    pieces: list[np.ndarray] = []
+    removed_frames = 0
+    i = 0
+    while i < nf:
+        if not keep[i]:
+            j = i
+            while j < nf and not keep[j]:
+                j += 1
+            removed_frames += j - i
+            i = j
+            continue
+        j = i
+        while j < nf and keep[j]:
+            j += 1
+        start = i * hop
+        end = n if j >= nf else min(n, j * hop)
+        if end > start:
+            pieces.append(audio[start:end])
+        i = j
+
+    stats["removed_sec"] = float(removed_frames * hop_sec)
+    if not pieces:
+        return audio, stats
+
+    collapsed = np.concatenate(pieces)
+    if len(collapsed) < int(_OFFMIC_MIN_KEEP_SEC * sample_rate):
+        stats["pause_collapse_skipped"] = "collapsed audio too short"
+        return audio, stats
+
+    stats["collapsed_duration_sec"] = float(len(collapsed) / sample_rate)
+    return collapsed, stats
+
+
+def prepare_scoring_audio(
+    audio_data: np.ndarray,
+    sample_rate: int,
+    *,
+    patient_only: bool = False,
+    max_pause_sec: float = DEFAULT_OFFMIC_PAUSE_SEC,
+) -> tuple[np.ndarray, dict]:
+    """Return audio to score, plus off-mic pause stats (applied only if patient_only)."""
+    collapsed, stats = collapse_long_pauses(
+        audio_data, sample_rate, max_pause_sec=max_pause_sec
+    )
+    if patient_only and stats["n_gaps_collapsed"] > 0 and "pause_collapse_skipped" not in stats:
+        stats["pause_collapse_applied"] = True
+        return collapsed, stats
+    stats["pause_collapse_applied"] = False
+    return np.asarray(audio_data, dtype=float).reshape(-1), stats
+
+
+def print_offmic_pause_notice(stats: dict, *, patient_only: bool) -> None:
+    """Explain long silences (off-mic interviewer) and whether they were collapsed."""
+    n = int(stats.get("n_gaps_collapsed", 0))
+    max_p = float(stats.get("max_pause_before_sec", 0.0))
+    removed = float(stats.get("removed_sec", 0.0))
+    limit = float(stats.get("max_pause_sec_used", DEFAULT_OFFMIC_PAUSE_SEC))
+    orig = float(stats.get("original_duration_sec", 0.0))
+    kept = float(stats.get("collapsed_duration_sec", orig))
+
+    if patient_only:
+        if stats.get("pause_collapse_applied"):
+            print(
+                f"Patient-only: collapsed {n} off-mic gaps longer than {limit:.1f}s "
+                f"(max gap {max_p:.1f}s). Removed {removed:.1f}s of interviewer-side "
+                f"silence ({orig:.1f}s -> {kept:.1f}s) before scoring."
+            )
+        elif stats.get("pause_collapse_skipped"):
+            print(
+                "Patient-only: collapse skipped "
+                f"({stats['pause_collapse_skipped']}); scoring the original clip."
+            )
+        else:
+            print(
+                f"Patient-only: no silences longer than {limit:.1f}s — "
+                "scoring the original clip."
+            )
+        print()
+        return
+
+    if n > 0 and max_p >= 2.5:
+        print(
+            "Long silent gaps look like off-mic interviewer turns "
+            f"(max pause {max_p:.1f}s, {n} gaps > {limit:.1f}s, {removed:.1f}s of silence)."
+        )
+        print(
+            "Those inflate pause ratio, slow speaking rate, and can look like sadness."
+        )
+        print("Re-run with --patient-only to score the speaker's turns only.")
+        print()
 
 
 def print_feature_summary(features: dict) -> None:
@@ -757,6 +922,13 @@ def print_feature_summary(features: dict) -> None:
     print(f"   Cutoff rate: {features.get('cutoff_rate_per_min', 0):.2f} / min")
     print(f"   Filler proxy rate: {features.get('filler_proxy_rate_per_min', 0):.2f} / min")
     print("   (Lexical fillers need ASR — filler_proxy is audio-only)")
+    if features.get("pause_collapse_applied"):
+        print(
+            "   Off-mic interviewer gaps collapsed: "
+            f"{features.get('n_gaps_collapsed', 0)} gaps, "
+            f"{features.get('removed_sec', 0):.1f}s removed "
+            f"(limit {features.get('max_pause_sec_used', DEFAULT_OFFMIC_PAUSE_SEC):.1f}s)"
+        )
     print()
 
     print("6️⃣ Prosody:")
