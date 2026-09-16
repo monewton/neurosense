@@ -45,3 +45,5 @@ recordings/
 .cache/
 .pytest_cache/
 .mypy_cache/
+
+.early.coverage

@@ -34,10 +34,10 @@ import numpy as np
 
 from audio_utils import configure_stdio, load_audio, pick_default_audio
 from enhanced_features import (
-    EnhancedFeatureExtractor,
     compute_voice_activity,
     print_feature_summary,
 )
+from emotional_state import print_emotional_state, windowed_emotional_state
 from session_history import (
     print_history,
     print_saved_session,
@@ -64,9 +64,11 @@ def run_analysis(
     print("🔬 Extracting Behavioral Features...")
     print()
 
-    extractor = EnhancedFeatureExtractor(sample_rate)
-    features = extractor.extract_all_features(audio_data)
+    # Acoustic features + within-clip emotional state / volatility / confidence
+    emotion = windowed_emotional_state(audio_data, sample_rate)
+    features = emotion["features"]
     print_feature_summary(features)
+    print_emotional_state(emotion)
 
     print("📈 Creating visualization...")
 
