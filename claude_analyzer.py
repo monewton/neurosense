@@ -109,6 +109,14 @@ Composite scores:
 - Stress Level: {g('stress_level')}/100
 - Vocal Stability Index: {g('vocal_stability'):.3f}
 
+Inferred emotional state (acoustic-proxy affective model):
+- Primary: {g('primary_emotion', 'n/a')} at level {g('emotion_level', 'n/a')}/5 [{g('emotion_traffic_light', 'n/a')}]
+- Activations: {g('emotional_activations', {})}
+- Blend: {g('emotion_blend', None)}
+- Within-clip volatility: {g('emotion_volatility', 0):.3f}
+- Emotion confidence: {g('emotion_confidence', 0):.1f}/100 (falls when volatility/mixing is high)
+- Plain-language: {g('emotion_interpretation', 'n/a')}
+
 Acoustic feature families (researcher integration set):
 1) Pitch — F0 mean: {g('f0_mean', g('pitch_mean')):.1f} Hz; variability (CV): {g('pitch_variation'):.3f}; range: {g('pitch_range'):.1f} Hz
 2) Speech rate — {g('speaking_rate'):.2f} syl/sec; ~{g('speaking_rate_wpm'):.1f} WPM (acoustic proxy); onset latency: {g('response_latency_sec'):.3f}s
@@ -119,29 +127,26 @@ Acoustic feature families (researcher integration set):
 7) Articulation — clarity: {g('articulation_clarity'):.3f}; slur index: {g('slur_index'):.3f}; over-articulation: {g('over_articulation_index'):.3f}
 
 CONTEXT:
-These metrics are acoustic (audio-only). WPM and filler rates are proxies — lexical accuracy requires ASR. In actual clinical use this supports neurological / behavioral monitoring; human voice demos validate the pipeline.
+Acoustic markers are proxies for underlying affective/physiological state (SOCOM framing). The emotional-state layer translates those proxies into stress/sadness/anger/neutral activations, level, traffic light, volatility, and confidence — so clinicians can ask “what does this mean?”, “how stable is it?”, and later “did treatment change it?” versus baseline. WPM/filler lexical counts are optional ASR enrichments; they are not required for the affective model.
 
 ANALYSIS REQUEST:
 Provide a comprehensive behavioral assessment including:
 
-1. OVERALL BEHAVIORAL STATUS (one sentence summary)
+1. OVERALL BEHAVIORAL / EMOTIONAL STATUS (one sentence)
 
-2. KEY BEHAVIORAL INDICATORS across the seven acoustic families above
+2. INTERPRET the emotional activations and whether the state looks stable or volatile
 
-3. CLINICAL INTERPRETATION:
-   - Concerning vs positive indicators
-   - Stress / engagement / articulation patterns
+3. KEY ACOUSTIC DRIVERS across the seven families
 
-4. PATTERN ASSESSMENT:
-   - Consistency with healthy behavior
-   - Stress or disfluency signals
+4. CLINICAL / OPERATIONAL MEANING:
+   - What this may imply for stress, mood, or engagement
+   - What would indicate change after therapy / redeployment (compare later sessions)
 
-5. MONITORING RECOMMENDATIONS:
-   - Which acoustic markers to watch longitudinally
+5. MONITORING RECOMMENDATIONS (which markers + volatility/confidence to track)
 
-6. CONFIDENCE LEVEL (High/Medium/Low) and what would improve it
+6. CONFIDENCE — reconcile with the numeric emotion confidence; note limits
 
-Be specific and clinically relevant. Treat AI output as adjunctive, not a diagnosis.
+Be specific. Treat AI output as adjunctive, not a diagnosis.
 """
         return prompt
 
