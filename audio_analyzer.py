@@ -43,6 +43,7 @@ from enhanced_features import (
     print_offmic_pause_notice,
 )
 from emotional_state import print_emotional_state, windowed_emotional_state
+from results_export import write_session_results_json
 from session_history import (
     print_history,
     print_saved_session,
@@ -162,6 +163,17 @@ def run_analysis(
         context_tag=context_tag,
     )
     print_saved_session(saved)
+    json_path = write_session_results_json(
+        features,
+        source_path,
+        duration_sec=len(audio_data) / sample_rate,
+        sample_rate=sample_rate,
+        subject_id=subject_id,
+        context_tag=context_tag,
+        pipeline="analyzer",
+        session=saved,
+    )
+    print(f"💾 Results JSON saved: {json_path}")
 
     print("=" * 60)
     print("✅ Analysis Complete!")

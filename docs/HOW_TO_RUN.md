@@ -18,6 +18,7 @@ Copy `.env.example` to `.env` and set your Anthropic key (needed only for Claude
 ```env
 CLAUDE_API_KEY=sk-ant-your-key-here
 CLAUDE_MODEL=claude-sonnet-4-6
+CLAUDE_MAX_TOKENS=8192
 ```
 
 **Always use the project venv.** System `python` often fails with `Python was not found` or missing packages.
@@ -63,6 +64,7 @@ You get:
 - Emotional state: stress / sadness / anger / neutral (0–5, green/yellow/red)  
 - Volatility + confidence  
 - Chart under `recordings\analysis_*.png`  
+- Compact results JSON under `recordings\analysis_*.json` (for Amy / other handoff)  
 - Row in `data\neurosense_history.db`
 
 ### Step B — Full Claude assessment
@@ -116,7 +118,7 @@ Needs a **valid** `CLAUDE_API_KEY` in `.env`. A `401 authentication_error` means
 
 | Path | Contents |
 |------|----------|
-| `recordings\` | Audio + `analysis_*.png` charts |
+| `recordings\` | Audio, `analysis_*.png` charts, `analysis_*.json` results (Amy handoff) |
 | `data\neurosense_history.db` | Session scores / history (SQLite) |
 | `.env` | API keys (never commit) |
 | `alert_emails.json` | Optional alert recipients |

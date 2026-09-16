@@ -32,6 +32,7 @@ from enhanced_features import (
     print_offmic_pause_notice,
 )
 from emotional_state import print_emotional_state, windowed_emotional_state
+from results_export import write_session_results_json
 from session_history import (
     next_recording_path,
     print_history,
@@ -179,6 +180,18 @@ class CompleteBehavioralDemo:
             claude_analysis=analysis,
         )
         print_saved_session(saved)
+        json_path = write_session_results_json(
+            features,
+            source,
+            duration_sec=len(audio_data) / sample_rate,
+            sample_rate=sample_rate,
+            subject_id=subject_id,
+            context_tag=context_tag,
+            pipeline="claude_demo",
+            claude_analysis=analysis,
+            session=saved,
+        )
+        print(f"💾 Results JSON saved: {json_path}")
 
     def _print_analysis(
         self,
@@ -197,6 +210,16 @@ class CompleteBehavioralDemo:
             print(f"   {analysis['error']}")
             if "details" in analysis:
                 print(f"   {analysis['details']}")
+            json_path = write_session_results_json(
+                features,
+                source,
+                duration_sec=len(audio_data) / sample_rate,
+                sample_rate=sample_rate,
+                subject_id=resolve_subject_id(subject_id, source),
+                context_tag=context_tag,
+                pipeline="claude_demo",
+            )
+            print(f"💾 Results JSON saved (scores only): {json_path}")
             return
 
         print("\n" + "=" * 70)

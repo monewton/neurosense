@@ -26,6 +26,7 @@ class ClaudeBehavioralAnalyzer:
         
         self.session = None
         self.model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
+        self.max_tokens = int(os.getenv("CLAUDE_MAX_TOKENS", "8192"))
     
     async def initialize(self):
         """Initialize the API session"""
@@ -64,7 +65,7 @@ class ClaudeBehavioralAnalyzer:
                 "https://api.anthropic.com/v1/messages",
                 json={
                     "model": self.model,
-                    "max_tokens": 2048,
+                    "max_tokens": self.max_tokens,
                     "messages": [
                         {"role": "user", "content": prompt}
                     ]
@@ -74,6 +75,11 @@ class ClaudeBehavioralAnalyzer:
                 if response.status == 200:
                     result = await response.json()
                     claude_text = result["content"][0]["text"]
+                    if result.get("stop_reason") == "max_tokens":
+                        print(
+                            f"⚠️ Claude hit max_tokens ({self.max_tokens}); "
+                            "narrative may be truncated. Raise CLAUDE_MAX_TOKENS and re-run."
+                        )
                     
                     # Parse Claude's response
                     analysis = self._parse_claude_response(claude_text, audio_features)

@@ -26,7 +26,7 @@ Use `--patient-only` when the interviewer is off-mic (long silences are turn-tak
 
 ## What it does
 
-1. **`audio_analyzer.py`** — acoustic features, emotional state (stress / sadness / anger / neutral), chart, session history
+1. **`audio_analyzer.py`** — acoustic features, emotional state (stress / sadness / anger / neutral), chart, `analysis_*.json` results, session history
 2. **`claude_demo.py`** — same pipeline plus Claude assessment (optional email alert)
 3. **`session_history.py`** — view saved sessions and trends
 
