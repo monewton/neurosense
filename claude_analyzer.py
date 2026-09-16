@@ -125,7 +125,7 @@ Acoustic feature families (researcher integration set):
 5) Pauses/disfluencies — pause ratio: {g('pause_ratio'):.1%}; mean pause: {g('mean_pause_duration_sec'):.3f}s; cutoffs/min: {g('cutoff_rate_per_min'):.2f}; filler proxy/min: {g('filler_proxy_rate_per_min'):.2f}
 6) Prosody — contour slope: {g('prosody_contour_slope'):.2f} Hz/s; rhythm regularity: {g('prosody_rhythm_regularity'):.3f}; emphasis: {g('prosody_emphasis'):.2f}
 7) Articulation — clarity: {g('articulation_clarity'):.3f}; slur index: {g('slur_index'):.3f}; over-articulation: {g('over_articulation_index'):.3f}
-
+{self._pause_capture_note(features)}
 CONTEXT:
 Acoustic markers are proxies for underlying affective/physiological state (SOCOM framing). The emotional-state layer translates those proxies into stress/sadness/anger/neutral activations, level, traffic light, volatility, and confidence — so clinicians can ask “what does this mean?”, “how stable is it?”, and later “did treatment change it?” versus baseline. WPM/filler lexical counts are optional ASR enrichments; they are not required for the affective model.
 
@@ -149,6 +149,22 @@ Provide a comprehensive behavioral assessment including:
 Be specific. Treat AI output as adjunctive, not a diagnosis.
 """
         return prompt
+
+    @staticmethod
+    def _pause_capture_note(features: Dict) -> str:
+        if not features.get("pause_collapse_applied"):
+            return ""
+        n = features.get("n_gaps_collapsed", 0)
+        removed = features.get("removed_sec", 0)
+        limit = features.get("max_pause_sec_used", 2.0)
+        orig = features.get("original_duration_sec", 0)
+        kept = features.get("collapsed_duration_sec", 0)
+        return (
+            f"\nCapture note — patient-only: interviewer was off-mic. "
+            f"Collapsed {n} silences longer than {limit:.1f}s "
+            f"({removed:.1f}s removed; {orig:.1f}s -> {kept:.1f}s). "
+            "Pause/rate/sadness metrics are from the speaker's turns, not turn-taking gaps.\n"
+        )
 
     def _parse_claude_response(self, claude_text: str, features: Dict) -> Dict:
         """Parse and structure Claude's response"""

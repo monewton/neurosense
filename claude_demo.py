@@ -25,7 +25,13 @@ import soundfile as sf
 from alert_sender import send_alert, should_send_alert
 from audio_utils import configure_stdio, load_audio, pick_default_audio
 from claude_analyzer import ClaudeBehavioralAnalyzer
-from enhanced_features import EnhancedFeatureExtractor, print_feature_summary
+from enhanced_features import (
+    EnhancedFeatureExtractor,
+    prepare_scoring_audio,
+    print_feature_summary,
+    print_offmic_pause_notice,
+)
+from emotional_state import print_emotional_state, windowed_emotional_state
 from session_history import (
     next_recording_path,
     print_history,
@@ -102,7 +108,12 @@ class CompleteBehavioralDemo:
         print()
         return audio_data, path
 
-    def extract_features(self, audio_data: np.ndarray) -> dict:
+    def extract_features(
+        self,
+        audio_data: np.ndarray,
+        *,
+        patient_only: bool = False,
+    ) -> dict:
         """Extract behavioral features from audio."""
         print("=" * 70)
         print("📊 STEP 2: FEATURE EXTRACTION")
@@ -111,9 +122,17 @@ class CompleteBehavioralDemo:
         print("🔬 Analyzing audio patterns...")
         print()
 
-        features = self.extractor.extract_all_features(audio_data)
+        scoring_audio, pause_stats = prepare_scoring_audio(
+            audio_data, self.extractor.sample_rate, patient_only=patient_only
+        )
+        print_offmic_pause_notice(pause_stats, patient_only=patient_only)
+
+        emotion = windowed_emotional_state(scoring_audio, self.extractor.sample_rate)
+        features = emotion["features"]
+        features.update(pause_stats)
         print("✅ Feature Extraction Complete\n")
         print_feature_summary(features)
+        print_emotional_state(emotion)
         return features
 
     async def get_claude_analysis(self, features: dict) -> dict:
@@ -226,12 +245,13 @@ class CompleteBehavioralDemo:
         *,
         subject_id: str | None = None,
         context_tag: str | None = None,
+        patient_only: bool = False,
     ) -> None:
         """Run the full pipeline on an existing recording."""
         audio_data, source = self.load_file(path, subject_id=subject_id)
         sample_rate = self.extractor.sample_rate
         resolved_subject = resolve_subject_id(subject_id, source)
-        features = self.extract_features(audio_data)
+        features = self.extract_features(audio_data, patient_only=patient_only)
         analysis = await self.get_claude_analysis(features)
         self._print_analysis(
             analysis,
@@ -298,6 +318,14 @@ async def main() -> None:
         metavar="ID",
         help="Subject id for per-person tracking (e.g. person1, person2)",
     )
+    parser.add_argument(
+        "--patient-only",
+        action="store_true",
+        help=(
+            "Interview capture with no interviewer on the mic: collapse silences "
+            "longer than 2s (off-mic turns) before scoring."
+        ),
+    )
     args = parser.parse_args()
 
     if args.history:
@@ -311,6 +339,7 @@ async def main() -> None:
             Path(args.file),
             subject_id=args.subject,
             context_tag=args.tag,
+            patient_only=args.patient_only,
         )
         return
 

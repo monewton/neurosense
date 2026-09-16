@@ -15,6 +15,9 @@ Usage:
   python audio_analyzer.py --subject person1 --tag "after work"
       Tag the session for trend correlation (e.g. triggers, time of day).
 
+  python audio_analyzer.py recordings/008-Patient.wav --subject 0008 --patient-only
+      Patient-only interview: collapse long off-mic interviewer gaps before scoring.
+
   python session_history.py --tags
       Compare average scores grouped by context tag.
 
@@ -35,7 +38,9 @@ import numpy as np
 from audio_utils import configure_stdio, load_audio, pick_default_audio
 from enhanced_features import (
     compute_voice_activity,
+    prepare_scoring_audio,
     print_feature_summary,
+    print_offmic_pause_notice,
 )
 from emotional_state import print_emotional_state, windowed_emotional_state
 from session_history import (
@@ -54,6 +59,7 @@ def run_analysis(
     *,
     subject_id: str | None = None,
     context_tag: str | None = None,
+    patient_only: bool = False,
 ) -> None:
     print("📊 Audio File Info:")
     print(f"   Duration: {len(audio_data) / sample_rate:.2f} seconds")
@@ -61,12 +67,18 @@ def run_analysis(
     print(f"   Total Samples: {len(audio_data)}")
     print()
 
+    scoring_audio, pause_stats = prepare_scoring_audio(
+        audio_data, sample_rate, patient_only=patient_only
+    )
+    print_offmic_pause_notice(pause_stats, patient_only=patient_only)
+
     print("🔬 Extracting Behavioral Features...")
     print()
 
     # Acoustic features + within-clip emotional state / volatility / confidence
-    emotion = windowed_emotional_state(audio_data, sample_rate)
+    emotion = windowed_emotional_state(scoring_audio, sample_rate)
     features = emotion["features"]
+    features.update(pause_stats)
     print_feature_summary(features)
     print_emotional_state(emotion)
 
@@ -186,6 +198,15 @@ def main() -> None:
         metavar="ID",
         help="Subject id for per-person tracking (e.g. person1, person2)",
     )
+    parser.add_argument(
+        "--patient-only",
+        action="store_true",
+        help=(
+            "Interview capture with no interviewer on the mic: collapse silences "
+            "longer than 2s (off-mic turns) so pause/rate/sadness scores reflect "
+            "the speaker, not the gaps."
+        ),
+    )
     args = parser.parse_args()
 
     if args.history:
@@ -230,6 +251,7 @@ def main() -> None:
         sample_rate,
         subject_id=resolved_subject,
         context_tag=args.tag,
+        patient_only=args.patient_only,
     )
 
 
