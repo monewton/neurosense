@@ -279,10 +279,12 @@ def windowed_emotional_state(
     state = infer_emotional_state(full_features, window_activations=window_acts or None)
     # Attach compact emotion fields onto features for history / Claude
     full_features["primary_emotion"] = state["primary_emotion"]
+    full_features["secondary_emotion"] = state["secondary_emotion"]
     full_features["emotion_level"] = state["emotion_level"]
     full_features["emotion_traffic_light"] = state["traffic_light"]
     full_features["emotion_volatility"] = state["volatility"]
     full_features["emotion_confidence"] = state["confidence"]
+    full_features["mixed_emotion"] = state["mixed_emotion"]
     full_features["emotion_blend"] = state["emotion_blend"]
     full_features["emotional_activations"] = state["emotional_activations"]
     full_features["emotion_interpretation"] = state["interpretation"]

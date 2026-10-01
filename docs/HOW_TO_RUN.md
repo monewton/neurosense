@@ -18,6 +18,7 @@ Copy `.env.example` to `.env` and set your Anthropic key (needed only for Claude
 ```env
 CLAUDE_API_KEY=sk-ant-your-key-here
 CLAUDE_MODEL=claude-sonnet-4-6
+CLAUDE_MAX_TOKENS=8192
 ```
 
 **Always use the project venv.** System `python` often fails with `Python was not found` or missing packages.
