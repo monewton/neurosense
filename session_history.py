@@ -39,7 +39,7 @@ def normalize_context_tag(tag: str | None) -> str | None:
 
 
 def normalize_subject_id(subject_id: str | None) -> str | None:
-    """Normalize a subject identifier (e.g. person1, person-2)."""
+    """Normalize a subject identifier (e.g. person1, person-2, 0008)."""
     if subject_id is None:
         return None
     cleaned = subject_id.strip().lower()
@@ -47,7 +47,57 @@ def normalize_subject_id(subject_id: str | None) -> str | None:
     cleaned = cleaned.strip("-_")
     if not cleaned:
         return None
+    if cleaned.isdigit():
+        cleaned = cleaned.zfill(4)
     return cleaned[:64]
+
+
+_INTERVIEW_STEM = re.compile(
+    r"""
+    ^
+    (?:(?P<site>[A-Za-z]{2,4})\s+)?
+    (?:
+        (?P<month>\d{1,2})-(?P<day>\d{1,2})-(?P<year>\d{2})
+        \s+
+        (?P<hour>\d{1,2})\.(?P<minute>\d{2})\s*(?P<ampm>AM|PM)
+        \s*-?\s*
+    )?
+    (?P<subject>\d{3,4})
+    (?:-[A-Za-z0-9]+)?
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
+
+def parse_interview_filename(path: Path | str) -> dict[str, Any]:
+    """
+    Parse study-style names, e.g.
+      AO 4-14-26 2.41PM - 0008.mp3
+      DW 6-11-26 11.28AM - 0008.mp3
+      0008-Patient.wav
+    Optional suffixes like -left / -right are ignored (organizers only).
+    """
+    stem = Path(path).stem.strip()
+    match = _INTERVIEW_STEM.match(stem)
+    if not match:
+        return {}
+    site = match.group("site")
+    subject = normalize_subject_id(match.group("subject"))
+    interview_date = None
+    if match.group("month") and match.group("day") and match.group("year"):
+        year = int(match.group("year"))
+        year += 2000 if year < 100 else 0
+        interview_date = (
+            f"{year:04d}-{int(match.group('month')):02d}-{int(match.group('day')):02d}"
+        )
+    meta: dict[str, Any] = {}
+    if subject:
+        meta["subject_id"] = subject
+    if site:
+        meta["site"] = site.upper()
+    if interview_date:
+        meta["interview_date"] = interview_date
+    return meta
 
 
 def parse_recording_number(path: Path | str) -> int | None:
@@ -228,11 +278,14 @@ def resolve_subject_id(
     subject_id: str | None,
     source_path: Path | str,
 ) -> str | None:
-    """Use explicit subject id or infer it from the recording path."""
+    """Use explicit subject id, then folder, then interview-style filename."""
     normalized = normalize_subject_id(subject_id)
     if normalized:
         return normalized
-    return infer_subject_from_path(source_path)
+    from_folder = infer_subject_from_path(source_path)
+    if from_folder:
+        return from_folder
+    return parse_interview_filename(source_path).get("subject_id")
 
 
 def _resolve_recording_number(
@@ -385,6 +438,111 @@ def get_baseline(
         "avg_rms_energy": row["avg_rms_energy"],
         "avg_pitch_variation": row["avg_pitch_variation"],
         "avg_speaking_rate": row["avg_speaking_rate"],
+    }
+
+
+def get_subject_prior_averages(
+    subject_id: str | None,
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> dict[str, Any]:
+    """Averages of all saved sessions for this subject (call before save_session)."""
+    subject_id = normalize_subject_id(subject_id)
+    empty = {
+        "subject_id": subject_id,
+        "session_count": 0,
+        "avg_behavioral_score": None,
+        "avg_stress_level": None,
+        "avg_speech_ratio": None,
+    }
+    if not subject_id:
+        return empty
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS session_count,
+                AVG(behavioral_score) AS avg_behavioral_score,
+                AVG(stress_level) AS avg_stress_level,
+                AVG(speech_ratio) AS avg_speech_ratio
+            FROM sessions
+            WHERE subject_id = ?
+            """,
+            (subject_id,),
+        ).fetchone()
+    return {
+        "subject_id": subject_id,
+        "session_count": int(row["session_count"] or 0),
+        "avg_behavioral_score": row["avg_behavioral_score"],
+        "avg_stress_level": row["avg_stress_level"],
+        "avg_speech_ratio": row["avg_speech_ratio"],
+    }
+
+
+def compare_to_self(
+    features: dict,
+    subject_id: str | None,
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> dict[str, Any]:
+    """
+    Current visit vs this subject's prior sessions (not a population norm).
+    Must run before save_session so this visit is not in the average.
+    """
+    subject_id = normalize_subject_id(subject_id)
+    if not subject_id:
+        return {
+            "status": "no_subject",
+            "detail": (
+                "No subject id — name the file with a 4-digit id "
+                "(e.g. 0008) or pass --subject."
+            ),
+            "subject_id": None,
+            "prior_sessions": 0,
+            "metrics": {},
+        }
+
+    prior = get_subject_prior_averages(subject_id, db_path=db_path)
+    current = {
+        "behavioral_score": float(features.get("behavioral_score", 0)),
+        "stress_level": float(features.get("stress_level", 0)),
+        "speech_ratio": float(features.get("speech_ratio", 0)),
+    }
+    if prior["session_count"] == 0:
+        return {
+            "status": "no_baseline",
+            "detail": f"First stored session for {subject_id}; no comparison yet.",
+            "subject_id": subject_id,
+            "prior_sessions": 0,
+            "metrics": {
+                "behavioral_score": {"current": current["behavioral_score"], "average": None, "delta": None},
+                "stress_level": {"current": current["stress_level"], "average": None, "delta": None},
+                "speech_ratio": {"current": current["speech_ratio"], "average": None, "delta": None},
+            },
+        }
+
+    def _metric(key: str, avg_key: str, ndigits: int) -> dict[str, Any]:
+        avg = float(prior[avg_key])
+        cur = current[key]
+        return {
+            "current": round(cur, ndigits),
+            "average": round(avg, ndigits),
+            "delta": round(cur - avg, ndigits),
+        }
+
+    return {
+        "status": "compared",
+        "detail": (
+            f"Compared with {prior['session_count']} prior session(s) "
+            f"for {subject_id}."
+        ),
+        "subject_id": subject_id,
+        "prior_sessions": prior["session_count"],
+        "metrics": {
+            "behavioral_score": _metric("behavioral_score", "avg_behavioral_score", 1),
+            "stress_level": _metric("stress_level", "avg_stress_level", 1),
+            "speech_ratio": _metric("speech_ratio", "avg_speech_ratio", 4),
+        },
     }
 
 

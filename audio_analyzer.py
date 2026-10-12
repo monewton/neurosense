@@ -45,6 +45,7 @@ from enhanced_features import (
 from emotional_state import print_emotional_state, windowed_emotional_state
 from results_export import write_session_results_json
 from session_history import (
+    compare_to_self,
     print_history,
     print_saved_session,
     print_trend_summary,
@@ -147,6 +148,9 @@ def run_analysis(
         plt.show()
 
     subject_id = resolve_subject_id(subject_id, source_path)
+    vs_self = compare_to_self(features, subject_id)
+    print(f"📉 vs self: {vs_self.get('detail')}")
+    print()
 
     print_trend_summary(
         features,
@@ -172,6 +176,7 @@ def run_analysis(
         context_tag=context_tag,
         pipeline="analyzer",
         session=saved,
+        vs_self=vs_self,
     )
     print(f"💾 Results JSON saved: {json_path}")
 

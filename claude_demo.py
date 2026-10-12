@@ -34,6 +34,7 @@ from enhanced_features import (
 from emotional_state import print_emotional_state, windowed_emotional_state
 from results_export import write_session_results_json
 from session_history import (
+    compare_to_self,
     next_recording_path,
     print_history,
     print_saved_session,
@@ -163,6 +164,9 @@ class CompleteBehavioralDemo:
         context_tag: str | None = None,
     ) -> None:
         subject_id = resolve_subject_id(subject_id, source)
+        vs_self = compare_to_self(features, subject_id)
+        print(f"📉 vs self: {vs_self.get('detail')}")
+        print()
         print_trend_summary(
             features,
             subject_id=subject_id,
@@ -190,6 +194,7 @@ class CompleteBehavioralDemo:
             pipeline="claude_demo",
             claude_analysis=analysis,
             session=saved,
+            vs_self=vs_self,
         )
         print(f"💾 Results JSON saved: {json_path}")
 
@@ -210,14 +215,16 @@ class CompleteBehavioralDemo:
             print(f"   {analysis['error']}")
             if "details" in analysis:
                 print(f"   {analysis['details']}")
+            resolved = resolve_subject_id(subject_id, source)
             json_path = write_session_results_json(
                 features,
                 source,
                 duration_sec=len(audio_data) / sample_rate,
                 sample_rate=sample_rate,
-                subject_id=resolve_subject_id(subject_id, source),
+                subject_id=resolved,
                 context_tag=context_tag,
                 pipeline="claude_demo",
+                vs_self=compare_to_self(features, resolved),
             )
             print(f"💾 Results JSON saved (scores only): {json_path}")
             return

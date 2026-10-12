@@ -9,6 +9,8 @@ from typing import Any
 
 import numpy as np
 
+from session_history import parse_interview_filename
+
 
 RESULTS_SCHEMA = "neurosense.session_results.v1"
 
@@ -38,6 +40,45 @@ def _behavioral_status(score: int) -> str:
     return "Low Activity"
 
 
+def _quality_card(features: dict, *, duration_sec: float, sample_rate: int) -> dict:
+    """Capture/trust flags so a dashboard can show why a score might look odd."""
+    peak = float(_g(features, "peak_amplitude", 0))
+    orig = float(_g(features, "original_duration_sec", duration_sec) or duration_sec)
+    scored = float(_g(features, "collapsed_duration_sec", orig) or orig)
+    removed = float(_g(features, "removed_sec", 0))
+    patient_only = bool(_g(features, "pause_collapse_applied", False))
+    telephony = int(sample_rate) <= 8000
+    clipping = peak >= 0.99
+    short_clip = orig < 5.0
+    heavy_offmic = patient_only and orig > 0 and (removed / orig) >= 0.35
+
+    flags: list[str] = []
+    if telephony:
+        flags.append("telephony_sample_rate")
+    if clipping:
+        flags.append("possible_clipping")
+    if short_clip:
+        flags.append("very_short_clip")
+    if patient_only:
+        flags.append("patient_only_gaps_collapsed")
+    if heavy_offmic:
+        flags.append("high_offmic_silence")
+
+    return {
+        "sample_rate": int(sample_rate),
+        "duration_sec": _json_number(orig, ndigits=2),
+        "scoring_duration_sec": _json_number(scored, ndigits=2),
+        "telephony": telephony,
+        "peak_amplitude": _json_number(peak, ndigits=4),
+        "possible_clipping": clipping,
+        "patient_only": patient_only,
+        "offmic_gaps_collapsed": int(_g(features, "n_gaps_collapsed", 0)),
+        "offmic_removed_sec": _json_number(removed, ndigits=1),
+        "speech_ratio": _json_number(_g(features, "speech_ratio", 0), ndigits=4),
+        "flags": flags,
+    }
+
+
 def build_session_results(
     features: dict,
     source_path: Path | str,
@@ -49,6 +90,7 @@ def build_session_results(
     pipeline: str = "analyzer",
     claude_analysis: dict | None = None,
     session: dict | None = None,
+    vs_self: dict | None = None,
 ) -> dict[str, Any]:
     """
     Curated results payload — composites + emotional state + compact markers.
@@ -59,20 +101,27 @@ def build_session_results(
     source = Path(source_path)
     behavioral = int(_g(features, "behavioral_score", 0))
     stress = int(_g(features, "stress_level", 0))
+    file_meta = parse_interview_filename(source)
+
+    source_block: dict[str, Any] = {
+        "file": source.name,
+        "path": str(source),
+        "subject_id": subject_id or file_meta.get("subject_id"),
+        "context_tag": context_tag,
+        "duration_sec": _json_number(duration_sec, ndigits=2),
+        "sample_rate": int(sample_rate),
+        "pipeline": pipeline,
+        "patient_only": bool(_g(features, "pause_collapse_applied", False)),
+    }
+    if file_meta.get("site"):
+        source_block["site"] = file_meta["site"]
+    if file_meta.get("interview_date"):
+        source_block["interview_date"] = file_meta["interview_date"]
 
     payload: dict[str, Any] = {
         "schema": RESULTS_SCHEMA,
         "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        "source": {
-            "file": source.name,
-            "path": str(source),
-            "subject_id": subject_id,
-            "context_tag": context_tag,
-            "duration_sec": _json_number(duration_sec, ndigits=2),
-            "sample_rate": int(sample_rate),
-            "pipeline": pipeline,
-            "patient_only": bool(_g(features, "pause_collapse_applied", False)),
-        },
+        "source": source_block,
         "composites": {
             "behavioral_score": behavioral,
             "stress_level": stress,
@@ -80,6 +129,10 @@ def build_session_results(
             "speech_ratio": _json_number(_g(features, "speech_ratio", 0), ndigits=4),
             "status": _behavioral_status(behavioral),
         },
+        "quality": _quality_card(
+            features, duration_sec=duration_sec, sample_rate=sample_rate
+        ),
+        "vs_self": vs_self,
         "emotional_state": {
             "primary": _g(features, "primary_emotion", None),
             "secondary": _g(features, "secondary_emotion", None),
@@ -104,6 +157,13 @@ def build_session_results(
             "jitter": _json_number(_g(features, "jitter", 0), ndigits=4),
             "shimmer": _json_number(_g(features, "shimmer", 0), ndigits=4),
             "tension": _json_number(_g(features, "tension", 0), ndigits=3),
+            "articulation_clarity": _json_number(
+                _g(features, "articulation_clarity", 0), ndigits=3
+            ),
+            "slur_index": _json_number(_g(features, "slur_index", 0), ndigits=3),
+            "over_articulation_index": _json_number(
+                _g(features, "over_articulation_index", 0), ndigits=3
+            ),
         },
     }
 
@@ -144,6 +204,7 @@ def write_session_results_json(
     pipeline: str = "analyzer",
     claude_analysis: dict | None = None,
     session: dict | None = None,
+    vs_self: dict | None = None,
     output_dir: Path | str = "recordings",
 ) -> Path:
     """Write `analysis_<stem>.json` next to the PNG chart. Returns the path."""
@@ -161,6 +222,7 @@ def write_session_results_json(
         pipeline=pipeline,
         claude_analysis=claude_analysis,
         session=session,
+        vs_self=vs_self,
     )
     out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return out_path

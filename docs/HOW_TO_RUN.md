@@ -83,6 +83,36 @@ Needs a **valid** `CLAUDE_API_KEY` in `.env`. A `401 authentication_error` means
 .\venv\Scripts\python.exe session_history.py --tags
 ```
 
+### File naming (person-vs-self)
+
+JSON `vs_self` only works if every visit for one person shares the same **4-digit subject id**. The analyzer reads it from `--subject` or from the filename.
+
+**Preferred pattern** (quote the path if it has spaces):
+
+```text
+<SITE> <M-D-YY> <H.MM><AM|PM> - <SUBJECT>.mp3
+```
+
+Examples:
+
+```text
+AO 4-14-26 2.41PM - 0008.mp3
+DW 7-30-26 1.06PM - 0008.mp3
+MD 4-29-26 2.55PM - 0008.mp3
+```
+
+| Piece | Meaning |
+|--------|---------|
+| `AO` / `DW` / `MD` | Site or interviewer (optional, stored as `source.site`) |
+| `4-14-26` | Interview date (stored as `source.interview_date`) |
+| `0008` | Subject — always **4 digits** (`008` is stored as `0008`) |
+
+Suffixes like `-left` / `-right` are fine for your own folders; they are **not** stored in the JSON.
+
+Also accepted: `0008-Patient.wav`. `--subject 0008` always wins if you pass it.
+
+First visit for a subject: `vs_self.status` = `no_baseline`. Later visits: `compared` with deltas on behavioral score, stress, and speech ratio.
+
 ---
 
 ## 4. Other useful commands
