@@ -34,6 +34,7 @@ from enhanced_features import (
 from emotional_state import print_emotional_state, windowed_emotional_state
 from results_export import write_session_results_json
 from session_history import (
+    compare_stability_over_time,
     compare_to_self,
     next_recording_path,
     print_history,
@@ -165,7 +166,11 @@ class CompleteBehavioralDemo:
     ) -> None:
         subject_id = resolve_subject_id(subject_id, source)
         vs_self = compare_to_self(features, subject_id)
+        stability = compare_stability_over_time(
+            features, subject_id, source_path=source
+        )
         print(f"📉 vs self: {vs_self.get('detail')}")
+        print(f"📉 stability over time: {stability.get('detail')}")
         print()
         print_trend_summary(
             features,
@@ -195,6 +200,7 @@ class CompleteBehavioralDemo:
             claude_analysis=analysis,
             session=saved,
             vs_self=vs_self,
+            stability_over_time=stability,
         )
         print(f"💾 Results JSON saved: {json_path}")
 
@@ -225,6 +231,9 @@ class CompleteBehavioralDemo:
                 context_tag=context_tag,
                 pipeline="claude_demo",
                 vs_self=compare_to_self(features, resolved),
+                stability_over_time=compare_stability_over_time(
+                    features, resolved, source_path=source
+                ),
             )
             print(f"💾 Results JSON saved (scores only): {json_path}")
             return

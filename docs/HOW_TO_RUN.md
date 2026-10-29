@@ -113,6 +113,8 @@ Also accepted: `0008-Patient.wav`. `--subject 0008` always wins if you pass it.
 
 First visit for a subject: `vs_self.status` = `no_baseline`. Later visits: `compared` with deltas on behavioral score, stress, and speech ratio.
 
+JSON `stability_over_time` answers whether **emotional stability** got better or worse for that same person (visit 1 vs now, last 3 visits, and first week vs later when interview dates span 14+ days). Lower volatility = more stable. `direction` is `more_stable`, `more_volatile`, or `unchanged`. Old history rows have no volatility until those files are re-run.
+
 ---
 
 ## 4. Other useful commands

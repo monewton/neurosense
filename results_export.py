@@ -91,6 +91,7 @@ def build_session_results(
     claude_analysis: dict | None = None,
     session: dict | None = None,
     vs_self: dict | None = None,
+    stability_over_time: dict | None = None,
 ) -> dict[str, Any]:
     """
     Curated results payload — composites + emotional state + compact markers.
@@ -133,6 +134,7 @@ def build_session_results(
             features, duration_sec=duration_sec, sample_rate=sample_rate
         ),
         "vs_self": vs_self,
+        "stability_over_time": stability_over_time,
         "emotional_state": {
             "primary": _g(features, "primary_emotion", None),
             "secondary": _g(features, "secondary_emotion", None),
@@ -205,6 +207,7 @@ def write_session_results_json(
     claude_analysis: dict | None = None,
     session: dict | None = None,
     vs_self: dict | None = None,
+    stability_over_time: dict | None = None,
     output_dir: Path | str = "recordings",
 ) -> Path:
     """Write `analysis_<stem>.json` next to the PNG chart. Returns the path."""
@@ -223,6 +226,7 @@ def write_session_results_json(
         claude_analysis=claude_analysis,
         session=session,
         vs_self=vs_self,
+        stability_over_time=stability_over_time,
     )
     out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return out_path

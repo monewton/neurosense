@@ -23,6 +23,12 @@ TREND_METRICS = (
     ("speech_ratio", "Speech Ratio", "higher"),
 )
 
+# Emotional stability over time (lower volatility = more stable)
+STABILITY_RECENT_VISITS = 3
+STABILITY_EARLY_DAYS = 7
+STABILITY_MIN_SPAN_DAYS = 14
+STABILITY_DELTA_EPS = 0.02
+
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -192,6 +198,10 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     )
     _ensure_column(conn, "sessions", "subject_id", "TEXT")
     _ensure_column(conn, "sessions", "recording_number", "INTEGER")
+    _ensure_column(conn, "sessions", "interview_date", "TEXT")
+    _ensure_column(conn, "sessions", "emotion_volatility", "REAL")
+    _ensure_column(conn, "sessions", "primary_emotion", "TEXT")
+    _ensure_column(conn, "sessions", "emotion_level", "INTEGER")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_sessions_recorded_at ON sessions(recorded_at)"
     )
@@ -328,6 +338,11 @@ def save_session(
     source = str(Path(source_path))
     context_tag = normalize_context_tag(context_tag)
     subject_id = resolve_subject_id(subject_id, source_path)
+    file_meta = parse_interview_filename(source_path)
+    interview_date = file_meta.get("interview_date")
+    emotion_volatility = features.get("emotion_volatility")
+    primary_emotion = features.get("primary_emotion")
+    emotion_level = features.get("emotion_level")
     claude_status = None
     claude_confidence = None
     if claude_analysis and "error" not in claude_analysis:
@@ -349,8 +364,9 @@ def save_session(
                 scenario, context_tag, pipeline,
                 behavioral_score, stress_level, speech_ratio,
                 rms_energy, pitch_variation, speaking_rate,
-                claude_status, claude_confidence
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                claude_status, claude_confidence,
+                interview_date, emotion_volatility, primary_emotion, emotion_level
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 _utc_now_iso(),
@@ -370,6 +386,10 @@ def save_session(
                 float(features.get("speaking_rate", 0)),
                 claude_status,
                 claude_confidence,
+                interview_date,
+                float(emotion_volatility) if emotion_volatility is not None else None,
+                primary_emotion,
+                int(emotion_level) if emotion_level is not None else None,
             ),
         )
         conn.commit()
@@ -543,6 +563,233 @@ def compare_to_self(
             "stress_level": _metric("stress_level", "avg_stress_level", 1),
             "speech_ratio": _metric("speech_ratio", "avg_speech_ratio", 4),
         },
+    }
+
+
+def _parse_day(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.strptime(str(value)[:10], "%Y-%m-%d")
+    except ValueError:
+        return None
+
+
+def _session_day(interview_date: str | None, recorded_at: str | None) -> str | None:
+    if interview_date:
+        return str(interview_date)[:10]
+    if recorded_at:
+        return str(recorded_at)[:10]
+    return None
+
+
+def _mean_or_none(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return float(sum(values) / len(values))
+
+
+def _stability_direction(delta: float | None) -> str | None:
+    """Lower volatility than the reference = more stable."""
+    if delta is None:
+        return None
+    if delta <= -STABILITY_DELTA_EPS:
+        return "more_stable"
+    if delta >= STABILITY_DELTA_EPS:
+        return "more_volatile"
+    return "unchanged"
+
+
+def _stability_against(current: float, reference: float | None) -> dict[str, Any]:
+    if reference is None:
+        return {"reference": None, "delta": None, "direction": None}
+    delta = round(current - reference, 4)
+    return {
+        "reference": round(reference, 4),
+        "delta": delta,
+        "direction": _stability_direction(delta),
+    }
+
+
+def get_subject_stability_priors(
+    subject_id: str | None,
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> list[dict[str, Any]]:
+    """Prior visits with a stored volatility, oldest first. Call before save_session."""
+    subject_id = normalize_subject_id(subject_id)
+    if not subject_id:
+        return []
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT interview_date, recorded_at, emotion_volatility,
+                   primary_emotion, emotion_level, source_file
+            FROM sessions
+            WHERE subject_id = ?
+              AND emotion_volatility IS NOT NULL
+            ORDER BY COALESCE(interview_date, substr(recorded_at, 1, 10)) ASC, id ASC
+            """,
+            (subject_id,),
+        ).fetchall()
+    priors: list[dict[str, Any]] = []
+    for row in rows:
+        priors.append(
+            {
+                "interview_date": _session_day(row["interview_date"], row["recorded_at"]),
+                "volatility": float(row["emotion_volatility"]),
+                "primary_emotion": row["primary_emotion"],
+                "emotion_level": row["emotion_level"],
+                "source_file": row["source_file"],
+            }
+        )
+    return priors
+
+
+def compare_stability_over_time(
+    features: dict,
+    subject_id: str | None,
+    *,
+    source_path: Path | str | None = None,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> dict[str, Any]:
+    """
+    This visit's emotional volatility vs this person's earlier visits.
+
+    Answers: did stability get better or worse over the period
+    (visit 1 vs now, last few visits, week-1 vs later when dates allow).
+    Must run before save_session.
+    """
+    subject_id = normalize_subject_id(subject_id)
+    current_vol = features.get("emotion_volatility")
+    current = {
+        "volatility": round(float(current_vol), 4) if current_vol is not None else None,
+        "primary": features.get("primary_emotion"),
+        "level": features.get("emotion_level"),
+    }
+    interview_date = None
+    if source_path is not None:
+        interview_date = parse_interview_filename(source_path).get("interview_date")
+
+    empty_compare = {
+        "vs_first_visit": None,
+        "vs_recent": None,
+        "vs_early_period": None,
+        "series": [],
+    }
+    if not subject_id:
+        return {
+            "status": "no_subject",
+            "detail": (
+                "No subject id — name the file with a 4-digit id "
+                "(e.g. 0008) or pass --subject."
+            ),
+            "subject_id": None,
+            "visit_number": None,
+            "current": current,
+            **empty_compare,
+        }
+    if current["volatility"] is None:
+        return {
+            "status": "no_volatility",
+            "detail": "No emotional volatility on this visit; run the emotional-state engine.",
+            "subject_id": subject_id,
+            "visit_number": None,
+            "current": current,
+            **empty_compare,
+        }
+
+    priors = get_subject_stability_priors(subject_id, db_path=db_path)
+    visit_number = len(priors) + 1
+    series = [
+        {
+            "visit": i + 1,
+            "interview_date": p["interview_date"],
+            "volatility": round(p["volatility"], 4),
+            "current": False,
+        }
+        for i, p in enumerate(priors)
+    ]
+    series.append(
+        {
+            "visit": visit_number,
+            "interview_date": interview_date,
+            "volatility": current["volatility"],
+            "current": True,
+        }
+    )
+
+    if not priors:
+        return {
+            "status": "no_baseline",
+            "detail": (
+                f"First stored stability point for {subject_id}; "
+                "trend starts on the next visit."
+            ),
+            "subject_id": subject_id,
+            "visit_number": visit_number,
+            "current": current,
+            "vs_first_visit": None,
+            "vs_recent": None,
+            "vs_early_period": None,
+            "series": series,
+        }
+
+    cur = current["volatility"]
+    first = priors[0]
+    vs_first = _stability_against(cur, first["volatility"])
+    vs_first["volatility"] = vs_first.pop("reference")
+    vs_first["interview_date"] = first["interview_date"]
+
+    recent_rows = priors[-STABILITY_RECENT_VISITS:]
+    recent_avg = _mean_or_none([p["volatility"] for p in recent_rows])
+    vs_recent = _stability_against(cur, recent_avg)
+    vs_recent["average"] = vs_recent.pop("reference")
+    vs_recent["visits"] = len(recent_rows)
+
+    vs_early_period = None
+    first_day = _parse_day(first["interview_date"])
+    current_day = _parse_day(interview_date) or _parse_day(priors[-1]["interview_date"])
+    if first_day and current_day:
+        span_days = (current_day - first_day).days
+        if span_days >= STABILITY_MIN_SPAN_DAYS:
+            early = [
+                p
+                for p in priors
+                if (day := _parse_day(p["interview_date"])) is not None
+                and (day - first_day).days <= STABILITY_EARLY_DAYS - 1
+            ]
+            early_avg = _mean_or_none([p["volatility"] for p in early])
+            if early_avg is not None:
+                vs_early_period = _stability_against(cur, early_avg)
+                vs_early_period["average"] = vs_early_period.pop("reference")
+                vs_early_period["visits"] = len(early)
+                vs_early_period["span_days"] = span_days
+                vs_early_period["label"] = "first_7_days"
+
+    bits = [
+        f"Visit {visit_number} vs visit 1: {vs_first['direction']} "
+        f"(delta {vs_first['delta']:+.3f})"
+    ]
+    bits.append(
+        f"vs last {vs_recent['visits']} visit(s): {vs_recent['direction']}"
+    )
+    if vs_early_period:
+        bits.append(
+            f"vs first week ({vs_early_period['span_days']} days later): "
+            f"{vs_early_period['direction']}"
+        )
+
+    return {
+        "status": "compared",
+        "detail": f"{subject_id}: " + "; ".join(bits) + ".",
+        "subject_id": subject_id,
+        "visit_number": visit_number,
+        "current": current,
+        "vs_first_visit": vs_first,
+        "vs_recent": vs_recent,
+        "vs_early_period": vs_early_period,
+        "series": series,
     }
 
 
